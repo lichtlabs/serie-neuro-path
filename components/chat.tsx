@@ -1,9 +1,11 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { Controls, Edge, ReactFlow } from "@xyflow/react";
+import { Controls, Edge, Node, ReactFlow } from "@xyflow/react";
 import { Background } from "@xyflow/react";
-import { Waypoints } from "lucide-react";
+import "@xyflow/react/dist/style.css";
+import { UIMessage } from "ai";
+import { Loader2, Waypoints } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -18,12 +20,27 @@ import {
 
 import { cn } from "@/lib/utils";
 
+import { RoadmapFlowRenderer } from "./roadmap-flow";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
+
+function isNeedToGenerateRoadmap(messages: UIMessage[]) {
+    // find the last ai message
+    const lastAiMessage = messages.findLast(
+        (message) => message.role === "assistant",
+    );
+    if (lastAiMessage) {
+        return lastAiMessage.content.includes(
+            "I will generate the learning path for you!",
+        );
+    }
+    return false;
+}
 
 export default function Chat() {
     const [nodes, setNodes] = useState<Node[]>([]);
     const [edges, setEdges] = useState<Edge[]>([]);
+    const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
 
     const { status, messages, input, handleInputChange, handleSubmit } =
         useChat({
@@ -32,15 +49,26 @@ export default function Chat() {
             },
         });
 
-    const notReady = status !== "ready";
-
     useEffect(() => {
-        if (status === "ready") {
-            console.log(messages);
-            // setNodes(data.nodes);
-            // setEdges(data.edges);
+        if (status === "ready" && messages.length > 0) {
+            if (isNeedToGenerateRoadmap(messages)) {
+                setIsGeneratingRoadmap(true);
+                fetch("/api/gen-roadmap", {
+                    method: "POST",
+                    body: JSON.stringify({ messages }),
+                })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        console.log(data);
+                        setNodes(data.nodes);
+                        setEdges(data.edges);
+                        setIsGeneratingRoadmap(false);
+                    });
+            }
         }
     }, [status, messages]);
+
+    const notReady = status !== "ready";
 
     return (
         <SidebarProvider
@@ -78,8 +106,10 @@ export default function Chat() {
                                         message.role === "user" && "text-right",
                                     )}
                                 >
+                                    {notReady && (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    )}
                                     {message.role === "user" ? "" : "AI: "}
-                                    {notReady && "Generating..."}
                                     {message.parts.map((part, i) => {
                                         switch (part.type) {
                                             case "text":
@@ -121,16 +151,11 @@ export default function Chat() {
                         <SidebarTrigger />
                     </header>
                     <main className="flex flex-1">
-                        <div className="w-full h-full text-black">
-                            {/* <ReactFlow
-                                nodes={nodes}
-                                edges={edges}
-                                proOptions={{ hideAttribution: true }}
-                            >
-                                <Background />
-                                <Controls />
-                            </ReactFlow> */}
-                        </div>
+                        <RoadmapFlowRenderer
+                            nodes={nodes}
+                            edges={edges}
+                            isGeneratingRoadmap={isGeneratingRoadmap}
+                        />
                     </main>
                 </div>
             </SidebarInset>

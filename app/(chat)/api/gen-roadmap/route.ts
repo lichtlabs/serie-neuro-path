@@ -1,99 +1,82 @@
-import { generateObject, streamObject } from "ai";
-import { z } from "zod";
+import { generateObject } from "ai";
 
-import { systemPrompt } from "@/lib/ai/prompts";
-import { aiProvider, googleProvider, openaiProvider } from "@/lib/ai/provider";
+import { edgeGenerationPrompt, nodeGenerationPrompt } from "@/lib/ai/prompts";
+import { aiProvider } from "@/lib/ai/provider";
+import { roadmapEdgeDataSchema, roadmapNodeDataSchema } from "@/lib/ai/schemas";
+
+const isDev = process.env.NODE_ENV !== "production";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-    const { messages } = await req.json();
+    try {
+        const { messages } = await req.json();
+        console.log(messages);
 
-    const result = await generateObject({
-        model: openaiProvider.languageModel(
-            "chat-model",
-        ) /* ollamaProvider.languageModel("chat-model") */,
-        messages,
-        system: systemPrompt,
-        output: "object",
-        schema: z.object({
-            nodes: z.array(
-                z.object({
-                    id: z.string(),
-                    position: z.object({
-                        x: z.number(),
-                        y: z.number(),
-                    }),
-                    data: z.record(z.any()),
-                    type: z.string().optional(),
-                    sourcePosition: z.string().optional(),
-                    targetPosition: z.string().optional(),
-                    hidden: z.boolean().optional(),
-                    selected: z.boolean().optional(),
-                    dragging: z.boolean().optional(),
-                    draggable: z.boolean().optional(),
-                    selectable: z.boolean().optional(),
-                    connectable: z.boolean().optional(),
-                    resizing: z.boolean().optional(),
-                    deletable: z.boolean().optional(),
-                    dragHandle: z.string().optional(),
-                    width: z.number().nullable().optional(),
-                    height: z.number().nullable().optional(),
-                    parentId: z.string().optional(),
-                    zIndex: z.number().optional(),
-                    extent: z
-                        .union([z.literal("parent"), z.array(z.number())])
-                        .optional(),
-                    expandParent: z.boolean().optional(),
-                    ariaLabel: z.string().optional(),
-                    focusable: z.boolean().optional(),
-                    style: z.record(z.any()).optional(),
-                    className: z.string().optional(),
-                    origin: z.any().optional(),
-                    handles: z.array(z.record(z.any())).optional(),
-                    measured: z
-                        .object({
-                            width: z.number().optional(),
-                            height: z.number().optional(),
-                        })
-                        .optional(),
-                }),
-            ),
-            edges: z.array(
-                z.object({
-                    id: z.string(),
-                    source: z.string(),
-                    target: z.string(),
-                    type: z.string().optional(),
-                    sourceHandle: z.string().nullable().optional(),
-                    targetHandle: z.string().nullable().optional(),
-                    animated: z.boolean().optional(),
-                    hidden: z.boolean().optional(),
-                    deletable: z.boolean().optional(),
-                    selectable: z.boolean().optional(),
-                    data: z.record(z.any()).optional(),
-                    selected: z.boolean().optional(),
-                    markerStart: z.any().optional(),
-                    markerEnd: z.any().optional(),
-                    zIndex: z.number().optional(),
-                    ariaLabel: z.string().optional(),
-                    interactionWidth: z.number().optional(),
-                    label: z.any().optional(),
-                    labelStyle: z.record(z.any()).optional(),
-                    labelShowBg: z.boolean().optional(),
-                    labelBgStyle: z.record(z.any()).optional(),
-                    labelBgPadding: z.array(z.number()).length(2).optional(),
-                    labelBgBorderRadius: z.number().optional(),
-                    style: z.record(z.any()).optional(),
-                    className: z.string().optional(),
-                    reconnectable: z
-                        .union([z.boolean(), z.string()])
-                        .optional(),
-                    focusable: z.boolean().optional(),
-                }),
-            ),
-        }),
-    });
+        // --- 1. NODE GENERATION ---
+        const nodesResult = await generateObject({
+            model: aiProvider.languageModel("chat-model"),
+            messages,
+            system: nodeGenerationPrompt,
+            output: "array",
+            schema: roadmapNodeDataSchema,
+        });
 
-    return Response.json(result);
+        let nodes = nodesResult.object || [];
+
+        // Ensure 'data' field exists
+        nodes = nodes.map((node: any) => ({
+            ...node,
+            data: node.data ?? {},
+        }));
+
+        // --- 2. EDGE GENERATION ---
+        const edgesResult = await generateObject({
+            model: aiProvider.languageModel("chat-model"),
+            messages,
+            system:
+                edgeGenerationPrompt +
+                `\n\nHere are the node ids: ${nodes.map((n: any) => n.id).join(", ")}.`,
+            output: "array",
+            schema: roadmapEdgeDataSchema,
+        });
+
+        const edges = edgesResult.object || [];
+
+        return Response.json({ nodes, edges });
+    } catch (error: any) {
+        console.error(error);
+
+        if (error?.name === "ZodError" || error?.issues) {
+            return Response.json(
+                {
+                    error: "Validation error",
+                    details: isDev ? error.issues || error.message : undefined,
+                },
+                { status: 400 },
+            );
+        }
+
+        if (error?.response || error?.statusCode) {
+            return Response.json(
+                {
+                    error: "AI provider error",
+                    details: isDev
+                        ? error.message || error.response
+                        : undefined,
+                },
+                { status: 502 },
+            );
+        }
+
+        return Response.json(
+            {
+                error: "Failed to generate roadmap",
+                details: isDev
+                    ? error.stack || error.message || error
+                    : undefined,
+            },
+            { status: 500 },
+        );
+    }
 }

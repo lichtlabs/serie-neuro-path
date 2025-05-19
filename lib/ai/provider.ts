@@ -11,9 +11,9 @@ import { isDevelopmentEnvironment } from "@/lib/consts";
 
 export const ollamaProvider = customProvider({
     languageModels: {
-        "chat-model": ollama.chat("gemma3"),
+        "chat-model": ollama.chat("llava"),
         "chat-model-reasoning": wrapLanguageModel({
-            model: ollama.chat("deepseek-r1"),
+            model: ollama.chat("qwen3"),
             middleware: extractReasoningMiddleware({ tagName: "think" }),
         }),
         "title-model": ollama.chat("gemma3"),
@@ -60,6 +60,6 @@ export const googleProvider = customProvider({
         : undefined,
 });
 
-export const aiProvider = isDevelopmentEnvironment
+export const aiProvider = !isDevelopmentEnvironment
     ? ollamaProvider
     : openaiProvider;

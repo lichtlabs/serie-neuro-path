@@ -6,7 +6,10 @@ export const env = createEnv({
      * Serverside Environment variables, not available on the client.
      * Will throw if you access these variables on the client.
      */
-    server: {},
+    server: {
+        OPENAI_API_KEY: z.string(),
+        GOOGLE_API_KEY: z.string(),
+    },
     /*
      * Environment variables available on the client (and server).
      *
@@ -23,5 +26,7 @@ export const env = createEnv({
      */
     runtimeEnv: {
         NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
     },
 });
