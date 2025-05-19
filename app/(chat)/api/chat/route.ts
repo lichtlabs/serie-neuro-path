@@ -1,6 +1,10 @@
 import { streamText } from "ai";
 
-import { signPrompt, systemPrompt } from "@/lib/ai/prompts";
+import {
+    contextAskingPrompt,
+    signPrompt,
+    systemPrompt,
+} from "@/lib/ai/prompts";
 import { aiProvider } from "@/lib/ai/provider";
 
 // Allow streaming responses up to 30 seconds
@@ -12,7 +16,8 @@ export async function POST(req: Request) {
     const result = streamText({
         model: aiProvider.languageModel("chat-model"),
         messages,
-        system: systemPrompt + "\n\n" + signPrompt,
+        system:
+            systemPrompt + "\n\n" + signPrompt + "\n\n" + contextAskingPrompt,
     });
 
     return result.toDataStreamResponse();

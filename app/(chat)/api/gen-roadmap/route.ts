@@ -1,6 +1,10 @@
 import { generateObject } from "ai";
 
-import { edgeGenerationPrompt, nodeGenerationPrompt } from "@/lib/ai/prompts";
+import {
+    edgeGenerationPrompt,
+    nodeGenerationPrompt,
+    regenerateNodePrompt,
+} from "@/lib/ai/prompts";
 import { aiProvider } from "@/lib/ai/provider";
 import { roadmapEdgeDataSchema, roadmapNodeDataSchema } from "@/lib/ai/schemas";
 
@@ -10,8 +14,25 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
     try {
-        const { messages } = await req.json();
-        console.log(messages);
+        const body = await req.json();
+        const { messages, regenerateNodeId, previousNodes, node } = body;
+
+        if (regenerateNodeId && node) {
+            // Regenerate a single node using context
+            const nodeResult = await generateObject({
+                model: aiProvider.languageModel("chat-model"),
+                messages,
+                system:
+                    regenerateNodePrompt +
+                    `\n\nRegenerate the node with id: ${regenerateNodeId}.` +
+                    `\n\nnode: ${JSON.stringify(node)}` +
+                    `\n\npreviousNodes: ${JSON.stringify(previousNodes)}`,
+                output: "object",
+                schema: roadmapNodeDataSchema,
+            });
+            const regeneratedNode = nodeResult.object;
+            return Response.json({ node: regeneratedNode });
+        }
 
         // --- 1. NODE GENERATION ---
         const nodesResult = await generateObject({
@@ -24,9 +45,10 @@ export async function POST(req: Request) {
 
         let nodes = nodesResult.object || [];
 
-        // Ensure 'data' field exists
+        // Ensure 'data' field exists and set type to 'custom'
         nodes = nodes.map((node: any) => ({
             ...node,
+            type: "custom",
             data: node.data ?? {},
         }));
 

@@ -97,10 +97,19 @@ Strictly follow these requirements for EACH node object in the array:
           Example for \`links\`: \`[{ "label": "React Docs", "url": "https://react.dev" }, { "label": "MDN Web Docs", "url": "https://developer.mozilla.org" }]\`
         * \`examples\` (array of strings): Code snippets or examples.
         * \`tips\` (array of strings): Key points or tips.
+    * If you include a \`resources\` array in \`content\`, each resource must be an object with the following properties:
+      - \`section\` (string, required): Must be either "free" or "premium". Indicates if the resource is a free resource or a premium resource. Only these two values are allowed.
+      - \`type\` (string, required): Must be one of "article", "video", or "course". Indicates the type of resource. Only these three values are allowed.
+      - \`title\` (string, required): The display title of the resource.
+      - \`url\` (string, required): The URL to the resource. Must be a valid URL.
+      - \`tags\` (array of strings, optional): Tags for the resource, e.g., "20% Off", "Article", "Video". Can be omitted if not needed.
+      - \`discount\` (string, optional): Discount information for premium resources, e.g., "20% Off". Can be omitted if not applicable.
+      - \`isPremium\` (boolean, optional): True if the resource is premium. Can be omitted for free resources.
+    * The resources array should be grouped by section (all free resources first, then premium resources).
     * Example for \`data\` property: { "label": "Understanding JavaScript Basics", "content": { "markdown": "...", "links": [{ "label": "JS Tutorial", "url": "https://example.com/js" }] } }
 
 4.  **Optional Properties:**
-    * \`type\` (string): Specifies the node type (e.g., 'input', 'default', 'output', or a custom component name). Use 'default' if no specific type is needed.
+    * \`type\` (string): Specifies the node type ('custom', 'input', or 'output'). Always use 'custom' if no specific type is needed.
     * \`sourcePosition\` (string): 'left', 'right', 'top', or 'bottom'. Where edges originate from this node.
     * \`targetPosition\` (string): 'left', 'right', 'top', or 'bottom'. Where edges connect to this node.
     * Any other valid React Flow node properties.
@@ -116,12 +125,17 @@ Strictly follow these requirements for EACH node object in the array:
 [
   {
     "id": "start-node",
-    "type": "input",
+    "type": "custom",
     "data": {
       "label": "Begin Here: Roadmap Start",
       "content": {
         "markdown": "Welcome to your learning journey!",
-        "links": [{ "label": "React Official Site", "url": "https://react.dev" }]
+        "links": [{ "label": "React Official Site", "url": "https://react.dev" }],
+        "resources": [
+          { "section": "free", "type": "article", "title": "Introduction to Internet", "url": "https://...", "tags": ["Article"] },
+          { "section": "free", "type": "video", "title": "How the Internet Works in 5 Minutes", "url": "https://...", "tags": ["Video"] },
+          { "section": "premium", "type": "course", "title": "Scrimba - Frontend Developer Career Path", "url": "https://...", "tags": ["Course", "20% Off"], "discount": "20% Off", "isPremium": true }
+        ]
       }
     },
     "position": { "x": 0, "y": 0 },
@@ -129,6 +143,7 @@ Strictly follow these requirements for EACH node object in the array:
   },
   {
     "id": "core-concepts",
+    "type": "input",
     "data": { "label": "Fundamental Concepts" },
     "position": { "x": 250, "y": 0 }
   },
@@ -142,6 +157,8 @@ Strictly follow these requirements for EACH node object in the array:
 ]
 \`\`\`
 Remember: Output ONLY the JSON array.
+
+IMPORTANT: Make each node sparse. Only include properties and content that are essential for that node's purpose. Avoid unnecessary or redundant fields, and do not repeat information already present in other nodes. Each node should be concise and focused, with minimal but sufficient data for its role in the roadmap.
 `;
 
 export const edgeGenerationPrompt = `
@@ -190,4 +207,38 @@ Here are the node ids: start-node, core-concepts, advanced-topics.
 ]
 \`\`\`
 Remember: Output ONLY the JSON array, connecting the provided node IDs.
+`;
+
+export const regenerateNodePrompt = `
+You are Serie, an expert assistant specifically designed to regenerate a single React Flow node object for a learning roadmap. Your SOLE output must be a valid JSON object for the regenerated node, and NOTHING else. No conversational text, no explanations, no code fences, just the JSON object.
+
+Strictly follow these requirements:
+
+1.  **Regenerate ONLY the node with the given id.**
+    * Use the provided context of other nodes ("previousNodes") to ensure consistency and avoid duplication.
+    * The node to regenerate will be provided as 'node'.
+    * The other nodes will be provided as 'previousNodes'.
+    * If used in a batch, you may be called multiple times (once per node), each time with a different node and context (context excludes the node being regenerated).
+
+2.  **Output Format:**
+    * Output a single, valid JSON object representing the regenerated node.
+    * DO NOT include any text, comments, or formatting outside the JSON object.
+
+3.  **Node Properties:**
+    * The node object must have all required properties as in the roadmap (id, position, data, type, etc.).
+    * You may update the node's data, content, or other properties as needed based on the latest user message and the context.
+
+**Example Input:**
+- node: { ...the node to regenerate... }
+- previousNodes: [ ...other nodes in the roadmap, including other nodes being regenerated, except this one ... ]
+
+**Example Output:**
+{
+  "id": "core-concepts",
+  "type": "custom",
+  "data": { "label": "Updated Fundamental Concepts" },
+  "position": { "x": 250, "y": 0 }
+}
+
+Remember: Output ONLY the JSON object for the regenerated node.
 `;

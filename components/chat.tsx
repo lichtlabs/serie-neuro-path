@@ -41,6 +41,9 @@ export default function Chat() {
     const [nodes, setNodes] = useState<Node[]>([]);
     const [edges, setEdges] = useState<Edge[]>([]);
     const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
+    const [regeneratingNodeIds, setRegeneratingNodeIds] = useState<string[]>(
+        [],
+    );
 
     const { status, messages, input, handleInputChange, handleSubmit } =
         useChat({
@@ -67,6 +70,35 @@ export default function Chat() {
             }
         }
     }, [status, messages]);
+
+    const handleRegenerateNode = async (nodeId: string) => {
+        setRegeneratingNodeIds((ids) => [...ids, nodeId]);
+        // Find the node and send its context (all other nodes) to the backend
+        const nodeToRegenerate = nodes.find((n) => n.id === nodeId);
+        const otherNodes = nodes.filter((n) => n.id !== nodeId);
+        try {
+            const res = await fetch("/api/gen-roadmap", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    regenerateNodeId: nodeId,
+                    previousNodes: otherNodes,
+                    node: nodeToRegenerate,
+                    messages,
+                }),
+            });
+            const data = await res.json();
+            if (data.node) {
+                setNodes((prev) =>
+                    prev.map((n) => (n.id === nodeId ? data.node : n)),
+                );
+            }
+        } catch (e) {
+            // Optionally handle error
+        } finally {
+            setRegeneratingNodeIds((ids) => ids.filter((id) => id !== nodeId));
+        }
+    };
 
     const notReady = status !== "ready";
 
@@ -155,6 +187,8 @@ export default function Chat() {
                             nodes={nodes}
                             edges={edges}
                             isGeneratingRoadmap={isGeneratingRoadmap}
+                            regeneratingNodeIds={regeneratingNodeIds}
+                            onRegenerate={handleRegenerateNode}
                         />
                     </main>
                 </div>

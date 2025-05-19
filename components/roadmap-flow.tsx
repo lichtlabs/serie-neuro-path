@@ -1,24 +1,45 @@
 import { Background, Controls, ReactFlow } from "@xyflow/react";
 import { Loader2 } from "lucide-react";
+import { useMemo } from "react";
 
 import CustomNode from "@/components/custom-node";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const nodeTypes = {
-    custom: CustomNode,
-};
-
 export function RoadmapFlowRenderer({
     nodes,
     edges,
     isGeneratingRoadmap,
+    regeneratingNodeIds = [],
+    onRegenerate,
 }: {
     nodes: any[];
     edges: any[];
     isGeneratingRoadmap: boolean;
+    regeneratingNodeIds?: string[];
+    onRegenerate?: (id: string) => void;
 }) {
+    // Memoize nodeTypes to inject loading and onRegenerate into CustomNode
+    const customNodeTypes = useMemo(
+        () => ({
+            custom: function CustomNodeWithProps(props: any) {
+                return (
+                    <CustomNode
+                        {...props}
+                        id={props.id}
+                        data={{
+                            ...props.data,
+                            loading: regeneratingNodeIds.includes(props.id),
+                        }}
+                        onRegenerate={onRegenerate}
+                    />
+                );
+            },
+        }),
+        [regeneratingNodeIds, onRegenerate],
+    );
+
     return (
         <main className="flex flex-1 h-full w-full p-4 bg-muted/30">
             {isGeneratingRoadmap ? (
@@ -31,11 +52,11 @@ export function RoadmapFlowRenderer({
                     </CardContent>
                 </Card>
             ) : nodes?.length > 0 && edges?.length > 0 ? (
-                <div className="w-full h-full relative rounded-lg overflow-hidden shadow-sm">
+                <div className="w-full h-full relative rounded-lg overflow-hidden shadow-sm text-black">
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
-                        nodeTypes={nodeTypes}
+                        nodeTypes={customNodeTypes}
                         proOptions={{ hideAttribution: true }}
                     >
                         <Background />
