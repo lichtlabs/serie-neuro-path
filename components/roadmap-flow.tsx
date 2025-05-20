@@ -1,11 +1,13 @@
-import { Background, Controls, ReactFlow } from "@xyflow/react";
+import { Background, Controls, Node, ReactFlow } from "@xyflow/react";
 import { Loader2 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useMemo } from "react";
 
 import CustomNode from "@/components/custom-node";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
+
+import { rebalanceNodes } from "@/lib/utils";
 
 export function RoadmapFlowRenderer({
     nodes,
@@ -13,12 +15,14 @@ export function RoadmapFlowRenderer({
     isGeneratingRoadmap,
     regeneratingNodeIds = [],
     onRegenerate,
+    onPromptClick,
 }: {
-    nodes: any[];
+    nodes: Node[];
     edges: any[];
     isGeneratingRoadmap: boolean;
     regeneratingNodeIds?: string[];
     onRegenerate?: (id: string) => void;
+    onPromptClick?: (prompt: string) => void;
 }) {
     // Memoize nodeTypes to inject loading and onRegenerate into CustomNode
     const customNodeTypes = useMemo(
@@ -40,6 +44,8 @@ export function RoadmapFlowRenderer({
         [regeneratingNodeIds, onRegenerate],
     );
 
+    const rebalancedNodes = nodes;
+
     return (
         <main className="flex flex-1 h-full w-full p-4 bg-muted/30">
             {isGeneratingRoadmap ? (
@@ -54,7 +60,7 @@ export function RoadmapFlowRenderer({
             ) : nodes?.length > 0 && edges?.length > 0 ? (
                 <div className="w-full h-full relative rounded-lg overflow-hidden shadow-sm text-black">
                     <ReactFlow
-                        nodes={nodes}
+                        nodes={rebalancedNodes}
                         edges={edges}
                         nodeTypes={customNodeTypes}
                         proOptions={{ hideAttribution: true }}
@@ -65,11 +71,50 @@ export function RoadmapFlowRenderer({
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center w-full h-full">
-                    <Skeleton className="w-2/3 h-8 mb-2" />
-                    <Separator />
                     <p className="text-muted-foreground mt-4 text-sm">
                         No roadmap yet — ask Serie to generate one! ✨
                     </p>
+                    <Separator className="w-full my-4" />
+                    <Card className="w-full max-w-md mb-6 shadow-md border border-primary/20 bg-background/80">
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2 text-primary font-semibold text-base">
+                                <Sparkles className="w-5 h-5 text-yellow-500" />
+                                Try one of these to get started:
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex flex-wrap gap-2 justify-center">
+                            {[
+                                "I want to learn web development from scratch.",
+                                "I want to learn data science.",
+                                "How do I start with AI?",
+                                "Give me a roadmap for frontend development.",
+                                "I want to become a backend developer.",
+                            ].map((prompt) => (
+                                <button
+                                    key={prompt}
+                                    type="button"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium cursor-pointer hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-primary/60 focus:outline-none transition-all text-sm shadow-sm active:scale-95"
+                                    onClick={() =>
+                                        onPromptClick && onPromptClick(prompt)
+                                    }
+                                    tabIndex={0}
+                                    aria-label={`Insert recommended prompt: ${prompt}`}
+                                    onKeyDown={(e) => {
+                                        if (
+                                            e.key === "Enter" ||
+                                            e.key === " "
+                                        ) {
+                                            onPromptClick &&
+                                                onPromptClick(prompt);
+                                        }
+                                    }}
+                                >
+                                    <Sparkles className="w-4 h-4 text-yellow-500 shrink-0" />
+                                    <span>{prompt}</span>
+                                </button>
+                            ))}
+                        </CardContent>
+                    </Card>
                 </div>
             )}
         </main>
