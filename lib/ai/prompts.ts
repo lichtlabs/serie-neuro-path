@@ -105,6 +105,7 @@ Strictly follow these requirements for EACH node object in the array:
     * It should contain data relevant to the node, such as the learning topic.
     * It is highly recommended to include a \`label\` property within \`data\`.
     * The \`label\` (string) should be a concise description of the learning topic, step, or concept represented by the node.
+    * **CRITICALLY IMPORTANT**: Each node MUST include a \`description\` property - a comprehensive, 2-3 sentence explanation that details what the learner will gain from this topic, why it's important, and how it connects to the broader learning journey. This is one of the MOST VALUABLE parts of each node and essential for the user's understanding.
     * If you include a \`content\` object within \`data\`, it can have the following optional properties:
         * \`markdown\` (string): Full content in markdown.
         * \`html\` (string): Pre-rendered HTML.
@@ -122,7 +123,7 @@ Strictly follow these requirements for EACH node object in the array:
       - \`isPremium\` (boolean, optional): True if the resource is premium. Can be omitted for free resources.
     * The resources array should be grouped by section (all free resources first, then premium resources).
     * Try to include a mix of different resource types (articles, videos, courses) and both free and premium options to give users choices.
-    * Example for \`data\` property: { "label": "Understanding JavaScript Basics", "content": { "markdown": "...", "links": [{ "label": "JS Tutorial", "url": "https://example.com/js" }] } }
+    * Example for \`data\` property: { "label": "Understanding JavaScript Basics", "description": "Master the core concepts of JavaScript including variables, data types, functions, and control flow. This foundational knowledge is essential for any web development journey and prepares you for more advanced JavaScript topics.", "content": { "markdown": "...", "links": [{ "label": "JS Tutorial", "url": "https://example.com/js" }] } }
 
 4.  **Optional Properties:**
     * \`type\` (string): Specifies the node type ('custom', 'input', or 'output'). Always use 'custom' if no specific type is needed.
@@ -144,6 +145,7 @@ Strictly follow these requirements for EACH node object in the array:
     "type": "custom",
     "data": {
       "label": "Begin Here: Roadmap Start",
+      "description": "This is the starting point of your learning journey. It provides an overview of what you'll learn and establishes the foundational knowledge needed to progress through the roadmap successfully.",
       "content": {
         "markdown": "Welcome to your learning journey!",
         "links": [{ "label": "React Official Site", "url": "https://react.dev" }],
@@ -163,6 +165,7 @@ Strictly follow these requirements for EACH node object in the array:
     "type": "input",
     "data": { 
       "label": "Fundamental Concepts",
+      "description": "Build your foundation by understanding the core principles that underpin the entire subject. Mastering these fundamental concepts will give you the mental models needed to tackle more advanced topics with confidence.",
       "content": {
         "markdown": "Core concepts you need to understand first",
         "resources": [
@@ -179,6 +182,7 @@ Strictly follow these requirements for EACH node object in the array:
     "type": "output",
     "data": { 
       "label": "Advanced Topics (End)",
+      "description": "Elevate your skills with sophisticated techniques and deeper understanding. This section covers complex concepts that build upon your foundation and will distinguish you as an advanced practitioner in the field.",
       "content": {
         "markdown": "Take your skills to the next level",
         "resources": [
