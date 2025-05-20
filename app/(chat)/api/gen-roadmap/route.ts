@@ -17,6 +17,28 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { messages, regenerateNodeId, previousNodes, node } = body;
 
+        console.log("Received gen-roadmap request with options:", {
+            regenerateNode: !!regenerateNodeId,
+            messageCount: messages?.length || 0,
+        });
+
+        // Log the last message to see if it contains the trigger phrase
+        if (messages && messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            console.log("Last message in API call:", {
+                role: lastMessage.role,
+                contentSnippet:
+                    typeof lastMessage.content === "string"
+                        ? lastMessage.content.substring(0, 100) + "..."
+                        : "Not a string content",
+                containsTrigger:
+                    typeof lastMessage.content === "string" &&
+                    lastMessage.content.includes(
+                        "I will generate the learning path for you!",
+                    ),
+            });
+        }
+
         if (regenerateNodeId && node) {
             // Regenerate a single node using context
             const nodeResult = await generateObject({
@@ -35,6 +57,7 @@ export async function POST(req: Request) {
         }
 
         // --- 1. NODE GENERATION ---
+        console.log("Starting node generation...");
         const nodesResult = await generateObject({
             model: aiProvider.languageModel("chat-model"),
             messages,
@@ -44,15 +67,32 @@ export async function POST(req: Request) {
         });
 
         let nodes = nodesResult.object || [];
+        console.log(`Generated ${nodes.length} nodes`);
 
         // Ensure 'data' field exists and set type to 'custom'
         nodes = nodes.map((node: any) => ({
             ...node,
             type: "custom",
-            data: node.data ?? {},
+            data: {
+                ...node.data,
+                // Add description if missing (required by schema)
+                description:
+                    node.data.description || `Learn about ${node.data.label}`,
+                // Initialize isExpanded if not set
+                isExpanded:
+                    node.data.isExpanded !== undefined
+                        ? node.data.isExpanded
+                        : false,
+                // Ensure content exists with required fields
+                content: node.data.content || {
+                    markdown: `# ${node.data.label}\n\nLearning content for ${node.data.label}`,
+                    resources: [],
+                },
+            },
         }));
 
         // --- 2. EDGE GENERATION ---
+        console.log("Starting edge generation...");
         const edgesResult = await generateObject({
             model: aiProvider.languageModel("chat-model"),
             messages,

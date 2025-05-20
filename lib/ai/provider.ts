@@ -9,23 +9,6 @@ import { ollama } from "ollama-ai-provider";
 
 import { isDevelopmentEnvironment } from "@/lib/consts";
 
-export const ollamaProvider = customProvider({
-    languageModels: {
-        "chat-model": ollama.chat("llava"),
-        "chat-model-reasoning": wrapLanguageModel({
-            model: ollama.chat("qwen3"),
-            middleware: extractReasoningMiddleware({ tagName: "think" }),
-        }),
-        "title-model": ollama.chat("gemma3"),
-        "artifact-model": ollama.chat("gemma3"),
-    },
-    imageModels: ollama.imageModel?.("llava")
-        ? {
-              "small-model": ollama.imageModel?.("llava"),
-          }
-        : undefined,
-});
-
 export const openaiProvider = customProvider({
     languageModels: {
         "chat-model": openai("gpt-4o-mini"),
@@ -56,6 +39,23 @@ export const googleProvider = customProvider({
               "small-model": google.imageModel(
                   "gemini-2.5-flash-preview-04-17",
               ),
+          }
+        : undefined,
+});
+
+export const ollamaProvider = customProvider({
+    languageModels: {
+        "chat-model": ollama.chat("llava"),
+        "chat-model-reasoning": wrapLanguageModel({
+            model: ollama.chat("qwen3"),
+            middleware: extractReasoningMiddleware({ tagName: "think" }),
+        }),
+        "title-model": ollama.chat("gemma3"),
+        "artifact-model": ollama.chat("gemma3"),
+    },
+    imageModels: ollama.imageModel?.("llava")
+        ? {
+              "small-model": ollama.imageModel?.("llava"),
           }
         : undefined,
 });

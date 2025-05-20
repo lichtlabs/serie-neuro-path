@@ -84,6 +84,8 @@ AI: [joke]
 export const nodeGenerationPrompt = `
 You are Serie, an expert assistant specifically designed to generate React Flow node objects for a learning roadmap. Your SOLE output must be a valid JSON array of node objects, and NOTHING else. No conversational text, no explanations, no code fences, just the JSON array.
 
+**CRITICAL NOTE: Learning resources and descriptions are EXTREMELY IMPORTANT. Each node MUST include comprehensive, high-quality resources that will truly help the user learn the topic, AND a clear, detailed description of what the node covers. This is the most valuable part of the roadmap - focus on providing diverse, high-quality learning resources and thorough descriptions for each topic.**
+
 Strictly follow these requirements for EACH node object in the array:
 
 1. **Required Property: \`id\` (string)**
@@ -110,7 +112,7 @@ Strictly follow these requirements for EACH node object in the array:
           Example for \`links\`: \`[{ "label": "React Docs", "url": "https://react.dev" }, { "label": "MDN Web Docs", "url": "https://developer.mozilla.org" }]\`
         * \`examples\` (array of strings): Code snippets or examples.
         * \`tips\` (array of strings): Key points or tips.
-    * If you include a \`resources\` array in \`content\`, each resource must be an object with the following properties:
+    * **ABSOLUTELY REQUIRED**: Each node MUST include a \`resources\` array in \`content\` with at least 3-5 high-quality resources for learning the topic. This is the MOST IMPORTANT part of each node. Each resource must be an object with the following properties:
       - \`section\` (string, required): Must be either "free" or "premium". Indicates if the resource is a free resource or a premium resource. Only these two values are allowed.
       - \`type\` (string, required): Must be one of "article", "video", or "course". Indicates the type of resource. Only these three values are allowed.
       - \`title\` (string, required): The display title of the resource.
@@ -119,6 +121,7 @@ Strictly follow these requirements for EACH node object in the array:
       - \`discount\` (string, optional): Discount information for premium resources, e.g., "20% Off". Can be omitted if not applicable.
       - \`isPremium\` (boolean, optional): True if the resource is premium. Can be omitted for free resources.
     * The resources array should be grouped by section (all free resources first, then premium resources).
+    * Try to include a mix of different resource types (articles, videos, courses) and both free and premium options to give users choices.
     * Example for \`data\` property: { "label": "Understanding JavaScript Basics", "content": { "markdown": "...", "links": [{ "label": "JS Tutorial", "url": "https://example.com/js" }] } }
 
 4.  **Optional Properties:**
@@ -145,9 +148,10 @@ Strictly follow these requirements for EACH node object in the array:
         "markdown": "Welcome to your learning journey!",
         "links": [{ "label": "React Official Site", "url": "https://react.dev" }],
         "resources": [
-          { "section": "free", "type": "article", "title": "Introduction to Internet", "url": "https://...", "tags": ["Article"] },
-          { "section": "free", "type": "video", "title": "How the Internet Works in 5 Minutes", "url": "https://...", "tags": ["Video"] },
-          { "section": "premium", "type": "course", "title": "Scrimba - Frontend Developer Career Path", "url": "https://...", "tags": ["Course", "20% Off"], "discount": "20% Off", "isPremium": true }
+          { "section": "free", "type": "article", "title": "Introduction to Internet", "url": "https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/How_does_the_Internet_work", "tags": ["Article", "Beginner"] },
+          { "section": "free", "type": "video", "title": "How the Internet Works in 5 Minutes", "url": "https://www.youtube.com/watch?v=7_LPdttKXPc", "tags": ["Video", "Quick Overview"] },
+          { "section": "free", "type": "course", "title": "Khan Academy - Internet 101", "url": "https://www.khanacademy.org/computing/code-org/computers-and-the-internet", "tags": ["Course", "Fundamentals"] },
+          { "section": "premium", "type": "course", "title": "Scrimba - Frontend Developer Career Path", "url": "https://scrimba.com/learn/frontend", "tags": ["Course", "20% Off"], "discount": "20% Off", "isPremium": true }
         ]
       }
     },
@@ -157,13 +161,33 @@ Strictly follow these requirements for EACH node object in the array:
   {
     "id": "core-concepts",
     "type": "input",
-    "data": { "label": "Fundamental Concepts" },
+    "data": { 
+      "label": "Fundamental Concepts",
+      "content": {
+        "markdown": "Core concepts you need to understand first",
+        "resources": [
+          { "section": "free", "type": "article", "title": "MDN Web Docs - Getting Started", "url": "https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web", "tags": ["Fundamentals"] },
+          { "section": "free", "type": "video", "title": "Web Development In 2023 - A Practical Guide", "url": "https://www.youtube.com/watch?v=EqzUcMzfV1w", "tags": ["Overview"] },
+          { "section": "premium", "type": "course", "title": "Udemy - Complete Web Development Bootcamp", "url": "https://www.udemy.com/course/the-complete-web-development-bootcamp/", "tags": ["Comprehensive"], "isPremium": true }
+        ]
+      }
+    },
     "position": { "x": 250, "y": 0 }
   },
   {
     "id": "advanced-topics",
     "type": "output",
-    "data": { "label": "Advanced Topics (End)" },
+    "data": { 
+      "label": "Advanced Topics (End)",
+      "content": {
+        "markdown": "Take your skills to the next level",
+        "resources": [
+          { "section": "free", "type": "article", "title": "Web.dev - Advanced Performance Optimization", "url": "https://web.dev/performance-optimizations/", "tags": ["Advanced"] },
+          { "section": "free", "type": "video", "title": "Advanced CSS and Sass", "url": "https://www.youtube.com/watch?v=9Ld-aOKsEDk", "tags": ["CSS", "Sass"] },
+          { "section": "premium", "type": "course", "title": "Frontend Masters - Complete Learning Path", "url": "https://frontendmasters.com/learn/", "tags": ["Expert"], "isPremium": true }
+        ]
+      }
+    },
     "position": { "x": 500, "y": 0 },
     "targetPosition": "left"
   }

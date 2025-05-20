@@ -5,7 +5,7 @@ import { Edge, Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { UIMessage } from "ai";
 import { Bot as BotIcon, Mic, Volume, Waypoints } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
     Sidebar,
@@ -30,14 +30,42 @@ import { RoadmapFlowRenderer } from "./roadmap-flow";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
+// For development debugging
+const isDev = process.env.NODE_ENV !== "production";
+
 function isNeedToGenerateRoadmap(messages: UIMessage[]) {
     // find the last ai message
     const lastAiMessage = messages.findLast(
         (message) => message.role === "assistant",
     );
     if (lastAiMessage) {
-        return lastAiMessage.content.includes(
-            "I will generate the learning path for you!",
+        // Check for the exact phrase that indicates a roadmap should be generated
+        const content = lastAiMessage.content;
+
+        // The actual format in the signPrompt is:
+        // "sign: I will generate the learning path for you!"
+        const exactSignFormat =
+            "sign: I will generate the learning path for you!";
+
+        console.log("Checking roadmap generation phrase in:", {
+            contentSnippet: content.substring(0, 100) + "...",
+            exactPhraseFound: content.includes(
+                "I will generate the learning path for you!",
+            ),
+            exactSignFormatFound: content.includes(exactSignFormat),
+            lowercaseFound: content
+                .toLowerCase()
+                .includes("i will generate the learning path for you!"),
+        });
+
+        // Check for different variants of the phrase
+        return (
+            content.includes("I will generate the learning path for you!") ||
+            content
+                .toLowerCase()
+                .includes("i will generate the learning path for you!") ||
+            content.includes(exactSignFormat) ||
+            content.includes("I will generate the learning path for you!")
         );
     }
     return false;
@@ -66,34 +94,89 @@ export default function Chat() {
             },
         });
 
+    // Memoize the submit handler to prevent unnecessary re-renders
+    const memoizedSubmit = useCallback(
+        (e: React.FormEvent<HTMLFormElement>) => {
+            handleSubmit(e);
+        },
+        [handleSubmit],
+    );
+
+    // UseRef to track if we need to generate roadmap without causing re-renders
+    const shouldGenerateRoadmapRef = useRef(false);
+    // Add a state variable to trigger the roadmap generation effect
+    const [triggerRoadmapGen, setTriggerRoadmapGen] = useState(0);
+
+    // First effect to check if we need to generate a roadmap and set the ref
     useEffect(() => {
-        if (
-            status === "ready" &&
-            messages.length > 0 &&
-            isNeedToGenerateRoadmap(messages)
-        ) {
+        // Only check when ready and messages exist
+        if (status === "ready" && messages.length > 0) {
+            // Find the last assistant message
             const lastAiMessage = messages.findLast(
                 (message) => message.role === "assistant",
             );
-            if (
-                lastAiMessage &&
-                lastProcessedRoadmapMessageId.current !== lastAiMessage.id
-            ) {
-                lastProcessedRoadmapMessageId.current = lastAiMessage.id;
-                setIsGeneratingRoadmap(true);
-                fetch("/api/gen-roadmap", {
-                    method: "POST",
-                    body: JSON.stringify({ messages }),
-                })
-                    .then((res) => res.json())
-                    .then((data) => {
-                        setNodes(data.nodes);
-                        setEdges(data.edges);
-                        setIsGeneratingRoadmap(false);
-                    });
+
+            if (lastAiMessage) {
+                // Get message content and check for roadmap trigger phrases
+                const content = lastAiMessage.content.toLowerCase();
+                const shouldGenerate = isNeedToGenerateRoadmap(messages);
+
+                // Log for debugging
+                console.log("Last AI message:", {
+                    content: content.substring(0, 100) + "...",
+                    shouldGenerate,
+                    id: lastAiMessage.id,
+                    lastProcessedId: lastProcessedRoadmapMessageId.current,
+                });
+
+                // Only trigger if not already processed this message
+                if (
+                    shouldGenerate &&
+                    lastProcessedRoadmapMessageId.current !== lastAiMessage.id
+                ) {
+                    console.log("Triggering roadmap generation!");
+                    shouldGenerateRoadmapRef.current = true;
+                    lastProcessedRoadmapMessageId.current = lastAiMessage.id;
+                    // Increment the trigger to cause the second effect to run
+                    setTriggerRoadmapGen((prev) => prev + 1);
+                }
             }
         }
-    }, [status]);
+    }, [status, messages]);
+
+    // Second effect to handle the actual API call, separated to break the render cycle
+    useEffect(() => {
+        // Only run if the ref is set to true
+        if (shouldGenerateRoadmapRef.current) {
+            console.log("Attempting to generate roadmap...");
+            shouldGenerateRoadmapRef.current = false;
+            setIsGeneratingRoadmap(true);
+
+            fetch("/api/gen-roadmap", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    messages,
+                    requireDescription: true,
+                }),
+            })
+                .then((res) => {
+                    console.log("Roadmap API response status:", res.status);
+                    return res.json();
+                })
+                .then((data) => {
+                    console.log("Roadmap data received:", data);
+                    setNodes(data.nodes);
+                    setEdges(data.edges);
+                    setIsGeneratingRoadmap(false);
+                })
+                .catch((err) => {
+                    // Error handling
+                    console.error("Roadmap generation error:", err);
+                    setIsGeneratingRoadmap(false);
+                });
+        }
+    }, [triggerRoadmapGen, messages]);
 
     useEffect(() => {
         return () => {
@@ -109,7 +192,7 @@ export default function Chat() {
     ) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            handleSubmit(e as any);
+            memoizedSubmit(e as any);
         }
     }
 
@@ -191,34 +274,39 @@ export default function Chat() {
         }
     }
 
-    const handleRegenerateNode = async (nodeId: string) => {
-        setRegeneratingNodeIds((ids) => [...ids, nodeId]);
-        // Find the node and send its context (all other nodes) to the backend
-        const nodeToRegenerate = nodes.find((n) => n.id === nodeId);
-        const otherNodes = nodes.filter((n) => n.id !== nodeId);
-        try {
-            const res = await fetch("/api/gen-roadmap", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    regenerateNodeId: nodeId,
-                    previousNodes: otherNodes,
-                    node: nodeToRegenerate,
-                    messages,
-                }),
-            });
-            const data = await res.json();
-            if (data.node) {
-                setNodes((prev) =>
-                    prev.map((n) => (n.id === nodeId ? data.node : n)),
+    const handleRegenerateNode = useCallback(
+        async (nodeId: string) => {
+            setRegeneratingNodeIds((ids) => [...ids, nodeId]);
+            // Find the node and send its context (all other nodes) to the backend
+            const nodeToRegenerate = nodes.find((n) => n.id === nodeId);
+            const otherNodes = nodes.filter((n) => n.id !== nodeId);
+            try {
+                const res = await fetch("/api/gen-roadmap", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        regenerateNodeId: nodeId,
+                        previousNodes: otherNodes,
+                        node: nodeToRegenerate,
+                        messages,
+                    }),
+                });
+                const data = await res.json();
+                if (data.node) {
+                    setNodes((prev) =>
+                        prev.map((n) => (n.id === nodeId ? data.node : n)),
+                    );
+                }
+            } catch (e) {
+                // Optionally handle error
+            } finally {
+                setRegeneratingNodeIds((ids) =>
+                    ids.filter((id) => id !== nodeId),
                 );
             }
-        } catch (e) {
-            // Optionally handle error
-        } finally {
-            setRegeneratingNodeIds((ids) => ids.filter((id) => id !== nodeId));
-        }
-    };
+        },
+        [nodes, messages],
+    );
 
     function handlePromptClick(prompt: string) {
         handleInputChange({
@@ -273,6 +361,22 @@ export default function Chat() {
                         <Waypoints />
                         <span className="font-semibold">Serie Neuro Path</span>
                     </SidebarMenuButton>
+                    {/* Debug button to manually trigger roadmap generation */}
+                    {isDev && messages.length > 0 && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                                console.log(
+                                    "Manual roadmap generation triggered",
+                                );
+                                shouldGenerateRoadmapRef.current = true;
+                                setTriggerRoadmapGen((prev) => prev + 1);
+                            }}
+                        >
+                            Debug: Generate Roadmap
+                        </Button>
+                    )}
                 </SidebarHeader>
                 <SidebarContent className="px-2 pb-2">
                     <div
@@ -328,7 +432,7 @@ export default function Chat() {
                             )}
                         </div>
                         <form
-                            onSubmit={handleSubmit}
+                            onSubmit={memoizedSubmit}
                             className={cn(
                                 "w-full flex gap-2 items-end pt-4 pb-2 px-2 sticky bottom-0 z-10 mb-6 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t border-muted/40",
                                 messages.length > 0 && "mt-auto mb-8",

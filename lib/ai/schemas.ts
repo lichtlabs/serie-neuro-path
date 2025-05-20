@@ -16,8 +16,7 @@ export const roadmapNodeDataSchema = z.object({
             .string()
             .describe(
                 "A short description of the roadmap step, including the topic and what the user will learn.",
-            )
-            .optional(),
+            ),
         isExpanded: z
             .boolean()
             .describe(
@@ -78,8 +77,7 @@ export const roadmapNodeDataSchema = z.object({
                     )
                     .describe(
                         "Structured list of resources, grouped by section (free/premium), with type, title, url, tags, and optional discount/premium info.",
-                    )
-                    .optional(),
+                    ),
                 links: z
                     .array(
                         z.object({
