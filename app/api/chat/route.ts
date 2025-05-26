@@ -11,7 +11,8 @@ import { aiProvider } from "@/lib/ai/provider";
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-    const { messages } = await req.json();
+    try {
+        const { messages } = await req.json();
 
     const result = streamText({
         model: aiProvider.languageModel("chat-model"),
@@ -21,4 +22,8 @@ export async function POST(req: Request) {
     });
 
     return result.toDataStreamResponse();
+    } catch (error) {
+        console.error(error);
+        return new Response("Internal Server Error", { status: 500 });
+    }
 }

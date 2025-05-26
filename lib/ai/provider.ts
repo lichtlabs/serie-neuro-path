@@ -60,6 +60,6 @@ export const ollamaProvider = customProvider({
         : undefined,
 });
 
-export const aiProvider = !isDevelopmentEnvironment
+export const aiProvider = isDevelopmentEnvironment
     ? ollamaProvider
     : openaiProvider;
