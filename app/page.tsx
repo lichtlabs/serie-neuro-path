@@ -1,3 +1,5 @@
-export default function Home() {
-    return <div>Hello, world!</div>;
+import Chat from "@/components/chat";
+
+export default function ChatPage() {
+    return <Chat />;
 }
